@@ -1,25 +1,31 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_validate
+from pathlib import Path
+from sklearn.model_selection import cross_validate
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 
-# Load processed dataset
-DF_PATH = 'processed_data/nonsparsetheta.csv'
+DATA_PATH = Path('processed_data/nonsparsetheta.csv')
 
-# Read data and drop index column if present
-engin = pd.read_csv(DF_PATH)
-if 'Unnamed: 0' in engin.columns:
-    engin = engin.drop('Unnamed: 0', axis=1)
+def load_data(path: Path) -> pd.DataFrame:
+    """Load the processed dataset."""
+    df = pd.read_csv(path)
+    if 'Unnamed: 0' in df.columns:
+        df = df.drop('Unnamed: 0', axis=1)
+    return df
 
 # Binary target mapping
-engin['y'] = np.where(engin['target'] == engin['player1_name'], 'player1', 'player2')
-engin['maptarget'] = engin['y'].map({'player1': 0, 'player2': 1})
+def prepare_target(df: pd.DataFrame) -> pd.DataFrame:
+    """Create a binary target column."""
+    df = df.copy()
+    df['y'] = np.where(df['target'] == df['player1_name'], 'player1', 'player2')
+    df['maptarget'] = df['y'].map({'player1': 0, 'player2': 1})
+    return df
 
 # Feature subset
-feature_cols = [
+FEATURE_COLS = [
     'player1_ht',
     'player2_ht',
     'player1_rank',
@@ -37,28 +43,43 @@ feature_cols = [
     'player1_level_win_pct',
     'player2_level_win_pct'
 ]
-# Use .copy() to avoid pandas SettingWithCopyWarning
-X = engin[feature_cols].copy()
-Y = engin['maptarget']
 
-# Encode categorical columns using separate encoders
-le_surface = LabelEncoder()
-le_level = LabelEncoder()
-X.loc[:, 'surface'] = le_surface.fit_transform(X['surface'])
-X.loc[:, 'tourney_level'] = le_level.fit_transform(X['tourney_level'])
+def get_features(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    """Return encoded feature matrix and target vector."""
+    X = df[FEATURE_COLS].copy()
+    y = df['maptarget']
 
-# Train/test split
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=5323)
+    le_surface = LabelEncoder()
+    le_level = LabelEncoder()
+    X.loc[:, 'surface'] = le_surface.fit_transform(X['surface'])
+    X.loc[:, 'tourney_level'] = le_level.fit_transform(X['tourney_level'])
+    return X, y
 
-# Pipeline with imputation to handle any missing values
-pipeline = Pipeline([
-    ('imputer', SimpleImputer(strategy='mean')),
-    ('model', LogisticRegression(solver='liblinear'))
-])
 
-scoring = ["accuracy", "precision", "recall", "f1"]
-result = cross_validate(pipeline, X_train, y_train, cv=5, scoring=scoring, return_train_score=True)
-print("Mean validation accuracy:", result["test_accuracy"].mean())
+def main() -> None:
+    """Run the ML workflow and report accuracy."""
+    df = prepare_target(load_data(DATA_PATH))
+    X, y = get_features(df)
+
+    pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='mean')),
+        ('model', LogisticRegression(solver='liblinear')),
+    ])
+
+    scoring = ["accuracy", "precision", "recall", "f1"]
+    result = cross_validate(
+        pipeline,
+        X,
+        y,
+        cv=5,
+        scoring=scoring,
+        return_train_score=True,
+    )
+    print("Mean validation accuracy:", result["test_accuracy"].mean())
+
+
+if __name__ == "__main__":
+    main()
 =======
 from pathlib import Path
 from sklearn.model_selection import train_test_split, cross_validate
