@@ -41,10 +41,11 @@ feature_cols = [
 X = engin[feature_cols].copy()
 Y = engin['maptarget']
 
-# Encode categorical columns
-le = LabelEncoder()
-X.loc[:, 'surface'] = le.fit_transform(X['surface'])
-X.loc[:, 'tourney_level'] = le.fit_transform(X['tourney_level'])
+# Encode categorical columns using separate encoders
+le_surface = LabelEncoder()
+le_level = LabelEncoder()
+X.loc[:, 'surface'] = le_surface.fit_transform(X['surface'])
+X.loc[:, 'tourney_level'] = le_level.fit_transform(X['tourney_level'])
 
 # Train/test split
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=5323)
